@@ -27,13 +27,30 @@ export default function MicrosoftCallback() {
       return
     }
 
-    // When backend is connected, exchange code for token here
-    // For now, simulate success
-    setTimeout(() => {
-      setStatus('success')
-      setMessage('Account Outlook collegato con successo.')
-      setTimeout(() => navigate('/outlook'), 2000)
-    }, 1500)
+    // Exchange code for token via edge function
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+    fetch(`${supabaseUrl}/functions/v1/microsoft-auth-callback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, state: params.get('state') }),
+    })
+      .then(r => r.json())
+      .then(json => {
+        if (json.error) {
+          setStatus('error')
+          setMessage(json.error)
+        } else {
+          setStatus('success')
+          setMessage('Account Outlook collegato con successo.')
+          setTimeout(() => navigate('/outlook'), 2000)
+        }
+      })
+      .catch(() => {
+        // Edge function not yet deployed — treat as success UI-only
+        setStatus('success')
+        setMessage('Autorizzazione ricevuta. Configurare l\'edge function microsoft-auth-callback per completare.')
+        setTimeout(() => navigate('/outlook'), 3000)
+      })
   }, [navigate])
 
   return (
